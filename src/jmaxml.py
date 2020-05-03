@@ -11,6 +11,8 @@ import areaTable
 import cityTable
 import epicenterTable
 
+from slack import slack
+
 IntList = ['7', '6+', '6-', '5+', '5-', '4', '3', '2', '1']
 
 IntDict = {
@@ -39,23 +41,30 @@ def getxml(url):
 def detailInformation(xml, table):
     #print(xml.prettify())
     jsontext = {}
+    sendtext = ''
     print(xml.Text.text)
     print("時刻 " + xml.OriginTime.text)
     dt = datetime.datetime.fromisoformat(xml.OriginTime.text)
     jsontext['date'] = dt.strftime("%Y/%m/%d %H:%M:%S")
     print(dt.strftime("%Y/%m/%d %p %I:%M"))
+    sendtext += dt.strftime("%Y/%m/%d %p %I:%M") + "ごろ地震がありました。\n"
     print("震源 " + epicenterTable.epicenterTable[xml.Hypocenter.Area.Code.text])
+    sendtext += '震源: ' + epicenterTable.epicenterTable[
+        xml.Hypocenter.Area.Code.text] + '\n'
     coordinate = xml.find("jmx_eb:Coordinate").text.strip('/')
     coordinate = re.split(r'[+-]', coordinate)
     print("北緯: " + coordinate[1] + " 東経: " + coordinate[2] + " 震源の深さ: " +
           str(int(coordinate[3]) / 1000) + "km")
+    sendtext += '震源の深さ: ' + str(int(coordinate[3]) / 1000) + 'km\n'
     jsontext['latitude'] = float(coordinate[1])
     jsontext['longitude'] = float(coordinate[2])
     jsontext['depth'] = float(coordinate[3]) / 1000
     print("マグニチュード " + xml.find("jmx_eb:Magnitude").text)
+    sendtext += 'マグニチュード: ' + xml.find("jmx_eb:Magnitude").text + '\n'
     jsontext['Magnitude'] = float(xml.find("jmx_eb:Magnitude").text)
     print("最大震度 " + xml.Intensity.Observation.MaxInt.text)
     jsontext['MaxInt'] = xml.Intensity.Observation.MaxInt.text
+    sendtext += '最大震度: ' + xml.Intensity.Observation.MaxInt.text + '\n'
     prefint = {}
     areaint = {}
     cityint = {}
@@ -92,6 +101,7 @@ def detailInformation(xml, table):
             continue
 
         print(IntDict[Int])
+        sendtext += IntDict[Int] + '\n'
         #震度ごとに市町村を検索する
         key = [k for k, v in cityint.items() if v == Int]
         #市町村名に紐づくidを検索する
@@ -114,15 +124,20 @@ def detailInformation(xml, table):
         for pid in pref_id:
             pref = [j['PrefName'] for j in table if pid == j['PrefId']][0]
             print(' ' + pref)
+            sendtext += ' ' + pref + '\n'
             city = [k for k, v in cityPref.items() if v == pid]
             city = [[
                 '  {}({})'.format(j['CityName'], j['CityFurigana'])
                 for j in table if i == j['id']
             ] for i in city]
             city = set([x[0] for x in city])
-            [print(city) for city in city]
+            for city in city:
+                print(city)
+                sendtext += city + '\n'
 
     print(jsontext)
+    print(sendtext)
+    slack.Send2SlackBot(sendtext)
     return
 
 

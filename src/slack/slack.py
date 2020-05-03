@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 import slackweb
-import slackinfo
+from . import slackinfo
 
 
-def main():
+def Send2SlackBot(sendtext):
     slack = slackweb.Slack(url=slackinfo.slack_webhook_url)
-    slack.notify(text='dockerコンテナで実行してみるよ', channel=slackinfo.slack_channel)
+    slack.notify(text=sendtext, channel=slackinfo.slack_channel)
 
 
 if __name__ == '__main__':
-    main()
+    #TESTCODE
+    info = 'hoge'
+    Send2SlackBot(info)
